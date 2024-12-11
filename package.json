@@ -2,7 +2,10 @@
   "name": "react-native-iap",
   "version": "12.15.7",
   "description": "React Native In App Purchase Module.",
-  "repository": "https://github.com/hyochan/react-native-iap",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/familytech-inc/react-native-iap.git"
+  },
   "author": "hyochan <hyochan.dev@gmail.com> (https://github.com/hyochan)",
   "license": "MIT",
   "bugs": {
@@ -61,6 +64,8 @@
     "!**/__mocks__"
   ],
   "scripts": {
+    "preinstall": "volta install node",
+    "install": "pnpm install",
     "prepare": "bob build && npm run clean:plugin && npm run build:plugin",
     "release": "release-it",
     "example": "yarn --cwd IapExample",
@@ -120,5 +125,11 @@
     "expo": {
       "optional": true
     }
+  },
+  "engines": {
+    "node": "18.17.1"
+  },
+  "volta": {
+    "node": "18.17.1"
   }
 }
