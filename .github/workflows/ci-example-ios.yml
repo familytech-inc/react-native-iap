@@ -19,9 +19,10 @@ on:
 
 jobs:
   build_ios_example:
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       NO_FLIPPER: 1
+      IOS_SIMULATOR: 'platform=iOS Simulator,name=iPhone 16'
 
     steps:
       - name: Checkout repository
@@ -85,5 +86,5 @@ jobs:
           workspace: IapExample/ios/IapExample.xcworkspace
           scheme: IapExample
           sdk: iphonesimulator
-          destination: 'platform=iOS Simulator,name=iPhone 14'
+          destination: ${{ env.IOS_SIMULATOR }}
           action: build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
