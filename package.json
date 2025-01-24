@@ -3,7 +3,7 @@
   "version": "12.16.1",
   "description": "React Native In App Purchase Module.",
   "repository": "https://github.com/hyochan/react-native-iap",
-  "author": "hyochan <hyochan.dev@gmail.com> (https://github.com/hyochan)",
+  "author": "hyochan <hyo@hyo.dev> (https://github.com/hyochan)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hyochan/react-native-iap/issues"
