@@ -1,6 +1,7 @@
 name: Publish main package
 
 on:
+  workflow_dispatch:
   release:
     types: [created]
 
