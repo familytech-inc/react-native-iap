@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.modifyProjectBuildGradle = exports.modifyAppBuildGradle = void 0;
+exports.modifyAppBuildGradle = void 0;
 const config_plugins_1 = require("expo/config-plugins");
 const config_plugins_2 = require("expo/config-plugins");
 const pkg = require('../../package.json');
