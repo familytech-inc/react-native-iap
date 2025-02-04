@@ -49,8 +49,8 @@ class RNIapModule(
     },
     private val builder: BillingClient.Builder = BillingClient
         .newBuilder(reactContext)
-        .enablePendingPurchases()
-        .enableUserChoiceBilling(userChoiceBillingListener),
+        .enablePendingPurchases(),
+        // .enableUserChoiceBilling(userChoiceBillingListener),
     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
 ) : ReactContextBaseJavaModule(reactContext),
     PurchasesUpdatedListener,
@@ -158,7 +158,7 @@ class RNIapModule(
             promise.safeResolve(true)
             return
         }
-        builder.setListener(this).enableUserChoiceBilling(this).build().also {
+        builder.setListener(this).build().also {
             billingClientCache = it
             it.startConnection(
                 object : BillingClientStateListener {
@@ -173,6 +173,37 @@ class RNIapModule(
                     }
                 },
             )
+        }
+    }
+
+    @ReactMethod
+    fun setUserChoiceEnabled(enable: Boolean, promise: Promise) {
+        Log.i(TAG, "Setting User Choice Billing to: $enable")
+
+        if (billingClientCache?.isReady == true) {
+            Log.i(TAG, "Reinitializing BillingClient to apply User Choice Billing setting")
+            endConnection(PromiseImpl({}, {})) // 既存の接続を閉じる
+        }
+
+        val clientBuilder = BillingClient.newBuilder(reactContext)
+            .setListener(this)
+            .enablePendingPurchases()
+
+        if (enable) {
+            clientBuilder.enableUserChoiceBilling(this)
+        }
+
+        billingClientCache = clientBuilder.build().apply {
+            startConnection(object : BillingClientStateListener {
+                override fun onBillingSetupFinished(billingResult: BillingResult) {
+                    if (!isValidResult(billingResult, promise)) return
+                    promise.safeResolve(true)
+                }
+
+                override fun onBillingServiceDisconnected() {
+                    Log.i(TAG, "Billing service disconnected")
+                }
+            })
         }
     }
 

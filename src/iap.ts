@@ -20,6 +20,7 @@ import {
   getIosModule,
   getNativeModule,
   isAmazon,
+  isAndroid,
   isIosStorekit2,
   storekit1Mode,
   storekit2Mode,
@@ -103,6 +104,13 @@ const App = () => {
 export const initConnection = (): Promise<boolean> =>
   getNativeModule().initConnection();
 
+export const setUserChoiceEnabled = (enable: boolean): Promise<void> => {
+  if (isAndroid) {
+    return RNIapModule.setUserChoiceEnabled(enable);
+  } else {
+    throw new Error(`not found setUserChoiceEnabled`);
+  }
+};
 /**
  * Disconnects from native SDK
  * Usage
