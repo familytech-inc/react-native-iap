@@ -47,10 +47,6 @@ class RNIapModule(
             // ... 追加の処理
         }
     },
-    private val builder: BillingClient.Builder = BillingClient
-        .newBuilder(reactContext)
-        .enablePendingPurchases(),
-        // .enableUserChoiceBilling(userChoiceBillingListener),
     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
 ) : ReactContextBaseJavaModule(reactContext),
     PurchasesUpdatedListener,
@@ -151,14 +147,15 @@ class RNIapModule(
         }
 
         if (billingClientCache?.isReady == true) {
-            Log.i(
-                TAG,
-                "Already initialized, you should only call initConnection() once when your app starts",
-            )
-            promise.safeResolve(true)
-            return
+            billingClientCache?.endConnection()
         }
-        builder.setListener(this).build().also {
+
+        // BuildClient再生成
+        val newBuilder = BillingClient.newBuilder(reactContext)
+            .enablePendingPurchases()
+            .setListener(this)
+
+        newBuilder.build().also {
             billingClientCache = it
             it.startConnection(
                 object : BillingClientStateListener {
@@ -177,33 +174,39 @@ class RNIapModule(
     }
 
     @ReactMethod
-    fun setUserChoiceEnabled(enable: Boolean, promise: Promise) {
-        Log.i(TAG, "Setting User Choice Billing to: $enable")
+    fun initConnectionWithUserChoice(promise: Promise) {
+        if (googleApiAvailability.isGooglePlayServicesAvailable(reactContext)
+            != ConnectionResult.SUCCESS
+        ) {
+            Log.i(TAG, "Google Play Services are not available on this device")
+            promise.safeReject(PromiseUtils.E_NOT_PREPARED, "Google Play Services are not available on this device")
+            return
+        }
 
         if (billingClientCache?.isReady == true) {
-            Log.i(TAG, "Reinitializing BillingClient to apply User Choice Billing setting")
-            endConnection(PromiseImpl({}, {})) // 既存の接続を閉じる
+            billingClientCache?.endConnection()
         }
 
-        val clientBuilder = BillingClient.newBuilder(reactContext)
-            .setListener(this)
+        // BuildClient再生成
+        val newBuilder = BillingClient.newBuilder(reactContext)
             .enablePendingPurchases()
+            .setListener(this)
+            .enableUserChoiceBilling(this)
 
-        if (enable) {
-            clientBuilder.enableUserChoiceBilling(this)
-        }
+        newBuilder.build().also {
+            billingClientCache = it
+            it.startConnection(
+                object : BillingClientStateListener {
+                    override fun onBillingSetupFinished(billingResult: BillingResult) {
+                        if (!isValidResult(billingResult, promise)) return
+                        promise.safeResolve(true)
+                    }
 
-        billingClientCache = clientBuilder.build().apply {
-            startConnection(object : BillingClientStateListener {
-                override fun onBillingSetupFinished(billingResult: BillingResult) {
-                    if (!isValidResult(billingResult, promise)) return
-                    promise.safeResolve(true)
-                }
-
-                override fun onBillingServiceDisconnected() {
-                    Log.i(TAG, "Billing service disconnected")
-                }
-            })
+                    override fun onBillingServiceDisconnected() {
+                        Log.i(TAG, "Billing service disconnected")
+                    }
+                },
+            )
         }
     }
 

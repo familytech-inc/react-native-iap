@@ -104,11 +104,11 @@ const App = () => {
 export const initConnection = (): Promise<boolean> =>
   getNativeModule().initConnection();
 
-export const setUserChoiceEnabled = (enable: boolean): Promise<void> => {
+export const initConnectionWithUserChoice = (): Promise<void> => {
   if (isAndroid) {
-    return RNIapModule.setUserChoiceEnabled(enable);
+    return RNIapModule.initConnectionWithUserChoice();
   } else {
-    throw new Error(`not found setUserChoiceEnabled`);
+    throw new Error(`not found initConnectionWithUserChoice`);
   }
 };
 /**

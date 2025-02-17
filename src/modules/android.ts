@@ -72,7 +72,7 @@ export interface AndroidModuleProps extends NativeModuleProps {
   startListening: StartListening;
   getPackageName: GetPackageName;
   isFeatureSupported: (feature: Android.FeatureType) => Promise<boolean>;
-  setUserChoiceEnabled: (enable: boolean) => Promise<void>;
+  initConnectionWithUserChoice: () => Promise<void>;
 }
 
 export const AndroidModule = NativeModules.RNIapModule as AndroidModuleProps;
