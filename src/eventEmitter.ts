@@ -75,6 +75,9 @@ export const purchaseUpdatedListener = (
 export const userChoiceBillingUpdateListenerAndroid = (
   listener: (event: Purchase) => void,
 ) => {
+  if (!isAndroid) {
+    return null;
+  }
   const eventEmitter = new NativeEventEmitter(getNativeModule());
   const proxyListener = isIosStorekit2()
     ? (event: Purchase) => {
