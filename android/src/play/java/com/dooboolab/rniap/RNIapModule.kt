@@ -40,19 +40,12 @@ import com.google.android.gms.common.GoogleApiAvailability
 @ReactModule(name = RNIapModule.TAG)
 class RNIapModule(
     private val reactContext: ReactApplicationContext,
-    private val userChoiceBillingListener: UserChoiceBillingListener = object : UserChoiceBillingListener {
-        override fun userSelectedAlternativeBilling(userChoiceDetails: UserChoiceDetails) {
-            // val products = userChoiceDetails.products
-            // Toast.makeText(reactApplicationContext, "Call userChoice ${products.size}", Toast.LENGTH_SHORT).show()
-            // ... 追加の処理
-        }
-    },
     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
 ) : ReactContextBaseJavaModule(reactContext),
-    PurchasesUpdatedListener,
-    UserChoiceBillingListener {
+    PurchasesUpdatedListener {
     private var billingClientCache: BillingClient? = null
     private val skus: MutableMap<String, ProductDetails> = mutableMapOf()
+    private var isUserChoiceBillingEnabled = false
 
     override fun getName(): String = TAG
 
@@ -138,6 +131,7 @@ class RNIapModule(
 
     @ReactMethod
     fun initConnection(promise: Promise) {
+        isUserChoiceBillingEnabled = false
         if (googleApiAvailability.isGooglePlayServicesAvailable(reactContext)
             != ConnectionResult.SUCCESS
         ) {
@@ -191,7 +185,9 @@ class RNIapModule(
         val newBuilder = BillingClient.newBuilder(reactContext)
             .enablePendingPurchases()
             .setListener(this)
-            .enableUserChoiceBilling(this)
+            .enableUserChoiceBilling(userChoiceBillingHandler)
+        // ユーザー選択課金フラグON
+        isUserChoiceBillingEnabled = true
 
         newBuilder.build().also {
             billingClientCache = it
@@ -589,6 +585,10 @@ class RNIapModule(
             if (billingResultCode != BillingClient.BillingResponseCode.OK) {
                 val errorData = PlayUtils.getBillingResponseData(billingResultCode)
                 promise.safeReject(errorData.code, errorData.message)
+            } else if (isUserChoiceBillingEnabled) {
+                // In case of user choice billing, treat as billing cancellation by the user
+                val errorData = PlayUtils.getBillingResponseData(BillingClient.BillingResponseCode.USER_CANCELED)
+                promise.safeReject(errorData.code, errorData.message)
             }
         }
     }
@@ -787,13 +787,13 @@ class RNIapModule(
         reactContext.addLifecycleEventListener(lifecycleEventListener)
     }
 
-    override fun userSelectedAlternativeBilling(userChoiceDetails: UserChoiceDetails) {
-        val products = userChoiceDetails.products
-        val externalToken = userChoiceDetails.externalTransactionToken
-        val result = Arguments.createMap()
-        result.putString("products", userChoiceDetails.products.toString())
-        result.putString("externalTransactionToken", userChoiceDetails.externalTransactionToken)
-        sendEvent(reactContext, "user-alternative-billing", result)
-        PromiseUtils.resolvePromisesForKey(USER_ALTER_ITEM, null)
+    private val userChoiceBillingHandler = object : UserChoiceBillingListener {
+        override fun userSelectedAlternativeBilling(userChoiceDetails: UserChoiceDetails) {
+            val result = Arguments.createMap()
+            result.putString("products", userChoiceDetails.products.toString())
+            result.putString("externalTransactionToken", userChoiceDetails.externalTransactionToken)
+            sendEvent(reactContext, "user-alternative-billing", result)
+            PromiseUtils.resolvePromisesForKey(USER_ALTER_ITEM, null)
+        }
     }
 }
