@@ -1,5 +1,7 @@
 package com.dooboolab.rniap
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
@@ -46,6 +48,7 @@ class RNIapModule(
     private var billingClientCache: BillingClient? = null
     private val skus: MutableMap<String, ProductDetails> = mutableMapOf()
     private var isUserChoiceBillingEnabled = false
+    private var userChoiceTriggered = false
 
     override fun getName(): String = TAG
 
@@ -585,10 +588,6 @@ class RNIapModule(
             if (billingResultCode != BillingClient.BillingResponseCode.OK) {
                 val errorData = PlayUtils.getBillingResponseData(billingResultCode)
                 promise.safeReject(errorData.code, errorData.message)
-            } else if (isUserChoiceBillingEnabled) {
-                // In case of user choice billing, treat as billing cancellation by the user
-                val errorData = PlayUtils.getBillingResponseData(BillingClient.BillingResponseCode.USER_CANCELED)
-                promise.safeReject(errorData.code, errorData.message)
             }
         }
     }
@@ -655,64 +654,73 @@ class RNIapModule(
         billingResult: BillingResult,
         purchases: List<Purchase>?,
     ) {
-        val responseCode = billingResult.responseCode
-        if (responseCode != BillingClient.BillingResponseCode.OK) {
-            val error = Arguments.createMap()
-            error.putInt("responseCode", responseCode)
-            error.putString("debugMessage", billingResult.debugMessage)
-            val errorData = PlayUtils.getBillingResponseData(responseCode)
-            error.putString("code", errorData.code)
-            error.putString("message", errorData.message)
-            sendEvent(reactContext, "purchase-error", error)
-            PlayUtils.rejectPromisesWithBillingError(PROMISE_BUY_ITEM, responseCode)
-            return
-        }
-        if (purchases != null) {
-            val promiseItems: WritableArray = Arguments.createArray()
-            purchases.forEach { purchase ->
-                val item = Arguments.createMap()
-                item.putString("productId", purchase.products[0])
-                val products = Arguments.createArray()
-                purchase.products.forEach { products.pushString(it) }
-                item.putArray("productIds", products)
-                item.putString("transactionId", purchase.orderId)
-                item.putDouble("transactionDate", purchase.purchaseTime.toDouble())
-                item.putString("transactionReceipt", purchase.originalJson)
-                item.putString("purchaseToken", purchase.purchaseToken)
-                item.putString("dataAndroid", purchase.originalJson)
-                item.putString("signatureAndroid", purchase.signature)
-                item.putBoolean("autoRenewingAndroid", purchase.isAutoRenewing)
-                item.putBoolean("isAcknowledgedAndroid", purchase.isAcknowledged)
-                item.putInt("purchaseStateAndroid", purchase.purchaseState)
-                item.putString("packageNameAndroid", purchase.packageName)
-                item.putString("developerPayloadAndroid", purchase.developerPayload)
-                val accountIdentifiers = purchase.accountIdentifiers
-                if (accountIdentifiers != null) {
-                    item.putString(
-                        "obfuscatedAccountIdAndroid",
-                        accountIdentifiers.obfuscatedAccountId,
-                    )
-                    item.putString(
-                        "obfuscatedProfileIdAndroid",
-                        accountIdentifiers.obfuscatedProfileId,
-                    )
-                }
-                promiseItems.pushMap(item.copy())
-                sendEvent(reactContext, "purchase-updated", item)
+        // userSelectedAlternativeBillingが先に実行されるよう300ms遅延
+        Handler(Looper.getMainLooper()).postDelayed({
+            val responseCode = billingResult.responseCode
+            // NOTE: ユーザー選択課金が有効かつ選択された場合はエラーではなく課金結果Nullとして扱う
+            if (isUserChoiceBillingEnabled && userChoiceTriggered && responseCode == BillingClient.BillingResponseCode.ERROR) {
+                userChoiceTriggered = false
+                PromiseUtils.resolvePromisesForKey(PROMISE_BUY_ITEM, null)
+                return@postDelayed
             }
-            PromiseUtils.resolvePromisesForKey(PROMISE_BUY_ITEM, promiseItems)
-        } else {
-            val result = Arguments.createMap()
-            result.putInt("responseCode", billingResult.responseCode)
-            result.putString("debugMessage", billingResult.debugMessage)
-            result.putString(
-                "extraMessage",
-                "The purchases are null. This is a normal behavior if you have requested DEFERRED" +
-                    " proration. If not please report an issue.",
-            )
-            sendEvent(reactContext, "purchase-updated", result)
-            PromiseUtils.resolvePromisesForKey(PROMISE_BUY_ITEM, null)
-        }
+            if (responseCode != BillingClient.BillingResponseCode.OK) {
+                val error = Arguments.createMap()
+                error.putInt("responseCode", responseCode)
+                error.putString("debugMessage", billingResult.debugMessage)
+                val errorData = PlayUtils.getBillingResponseData(responseCode)
+                error.putString("code", errorData.code)
+                error.putString("message", errorData.message)
+                sendEvent(reactContext, "purchase-error", error)
+                PlayUtils.rejectPromisesWithBillingError(PROMISE_BUY_ITEM, responseCode)
+                return@postDelayed
+            }
+            if (purchases != null) {
+                val promiseItems: WritableArray = Arguments.createArray()
+                purchases.forEach { purchase ->
+                    val item = Arguments.createMap()
+                    item.putString("productId", purchase.products[0])
+                    val products = Arguments.createArray()
+                    purchase.products.forEach { products.pushString(it) }
+                    item.putArray("productIds", products)
+                    item.putString("transactionId", purchase.orderId)
+                    item.putDouble("transactionDate", purchase.purchaseTime.toDouble())
+                    item.putString("transactionReceipt", purchase.originalJson)
+                    item.putString("purchaseToken", purchase.purchaseToken)
+                    item.putString("dataAndroid", purchase.originalJson)
+                    item.putString("signatureAndroid", purchase.signature)
+                    item.putBoolean("autoRenewingAndroid", purchase.isAutoRenewing)
+                    item.putBoolean("isAcknowledgedAndroid", purchase.isAcknowledged)
+                    item.putInt("purchaseStateAndroid", purchase.purchaseState)
+                    item.putString("packageNameAndroid", purchase.packageName)
+                    item.putString("developerPayloadAndroid", purchase.developerPayload)
+                    val accountIdentifiers = purchase.accountIdentifiers
+                    if (accountIdentifiers != null) {
+                        item.putString(
+                            "obfuscatedAccountIdAndroid",
+                            accountIdentifiers.obfuscatedAccountId,
+                        )
+                        item.putString(
+                            "obfuscatedProfileIdAndroid",
+                            accountIdentifiers.obfuscatedProfileId,
+                        )
+                    }
+                    promiseItems.pushMap(item.copy())
+                    sendEvent(reactContext, "purchase-updated", item)
+                }
+                PromiseUtils.resolvePromisesForKey(PROMISE_BUY_ITEM, promiseItems)
+            } else {
+                val result = Arguments.createMap()
+                result.putInt("responseCode", billingResult.responseCode)
+                result.putString("debugMessage", billingResult.debugMessage)
+                result.putString(
+                    "extraMessage",
+                    "The purchases are null. This is a normal behavior if you have requested DEFERRED" +
+                        " proration. If not please report an issue.",
+                )
+                sendEvent(reactContext, "purchase-updated", result)
+                PromiseUtils.resolvePromisesForKey(PROMISE_BUY_ITEM, null)
+            }
+        }, 300)
     }
 
     private fun sendUnconsumedPurchases(promise: Promise) {
@@ -789,6 +797,8 @@ class RNIapModule(
 
     private val userChoiceBillingHandler = object : UserChoiceBillingListener {
         override fun userSelectedAlternativeBilling(userChoiceDetails: UserChoiceDetails) {
+            // NOTE: PROMISE_BUY_ITEMでのresolveはonPurchasesUpdatedでまとめて行うためここでは何もしない
+            userChoiceTriggered = true
             val result = Arguments.createMap()
             result.putString("products", userChoiceDetails.products.toString())
             result.putString("externalTransactionToken", userChoiceDetails.externalTransactionToken)
