@@ -59,6 +59,7 @@ type ConsumeProduct = (
 
 type StartListening = () => Promise<void>;
 type GetPackageName = () => Promise<string>;
+type GetStorefront = () => Promise<string>;
 
 export interface AndroidModuleProps extends NativeModuleProps {
   flushFailedPurchasesCachedAsPending: FlushFailedPurchasesCachedAsPending;
@@ -71,6 +72,7 @@ export interface AndroidModuleProps extends NativeModuleProps {
   /** @deprecated to be renamed to sendUnconsumedPurchases if not removed completely */
   startListening: StartListening;
   getPackageName: GetPackageName;
+  getStorefront: GetStorefront;
   isFeatureSupported: (feature: Android.FeatureType) => Promise<boolean>;
   initConnectionWithUserChoice: () => Promise<void>;
 }

@@ -6,11 +6,14 @@ import android.util.Log
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClientStateListener
+import com.android.billingclient.api.BillingConfig
+import com.android.billingclient.api.BillingConfigResponseListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingFlowParams.SubscriptionUpdateParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.ConsumeResponseListener
+import com.android.billingclient.api.GetBillingConfigParams
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchaseHistoryRecord
@@ -42,6 +45,7 @@ import com.google.android.gms.common.GoogleApiAvailability
 @ReactModule(name = RNIapModule.TAG)
 class RNIapModule(
     private val reactContext: ReactApplicationContext,
+    private val builder: BillingClient.Builder = BillingClient.newBuilder(reactContext).enablePendingPurchases(),
     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
 ) : ReactContextBaseJavaModule(reactContext),
     PurchasesUpdatedListener {
@@ -144,13 +148,14 @@ class RNIapModule(
         }
 
         if (billingClientCache?.isReady == true) {
-            billingClientCache?.endConnection()
+            promise.safeResolve(true)
+            return
         }
 
-        // BuildClient再生成
-        val newBuilder = BillingClient.newBuilder(reactContext)
-            .enablePendingPurchases()
-            .setListener(this)
+        billingClientCache?.endConnection()
+
+        // BuildClient再利用
+        val newBuilder = builder.setListener(this)
 
         newBuilder.build().also {
             billingClientCache = it
@@ -294,7 +299,7 @@ class RNIapModule(
             val skuList = mutableListOf<QueryProductDetailsParams.Product>()
             for (i in 0 until skuArr.size()) {
                 if (skuArr.getType(i) == ReadableType.String) {
-                    skuArr.getString(i).let { sku ->
+                    skuArr.getString(i)?.let { sku ->
                         skuList.add(
                             QueryProductDetailsParams.Product
                                 .newBuilder()
@@ -483,7 +488,7 @@ class RNIapModule(
                     item.putString("purchaseToken", purchase.purchaseToken)
                     item.putString("dataAndroid", purchase.originalJson)
                     item.putString("signatureAndroid", purchase.signature)
-                    item.putString("developerPayload", purchase.developerPayload)
+                    item.putString("developerPayload", purchase.developerPayload.orEmpty())
                     items.pushMap(item)
                 }
                 promise.safeResolve(items)
@@ -544,8 +549,7 @@ class RNIapModule(
                     }
                     var productDetailParams = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(selectedSku)
                     if (type == BillingClient.ProductType.SUBS) {
-                        offerTokenArr.getString(index).let { offerToken ->
-                            // null check for older versions of RN
+                        offerTokenArr.getString(index)?.let { offerToken ->
                             productDetailParams = productDetailParams.setOfferToken(offerToken)
                         }
                     }
@@ -763,6 +767,25 @@ class RNIapModule(
 
     @ReactMethod
     fun getPackageName(promise: Promise) = promise.resolve(reactApplicationContext.packageName)
+
+    @ReactMethod
+    fun getStorefront(promise: Promise) {
+        ensureConnection(
+            promise,
+        ) { billingClient ->
+            billingClient.getBillingConfigAsync(
+                GetBillingConfigParams.newBuilder().build(),
+                BillingConfigResponseListener { result: BillingResult, config: BillingConfig? ->
+                    if (result.responseCode == BillingClient.BillingResponseCode.OK) {
+                        promise.safeResolve(config?.countryCode.orEmpty())
+                    } else {
+                        val debugMessage = result.debugMessage.orEmpty()
+                        promise.safeReject(result.responseCode.toString(), debugMessage)
+                    }
+                },
+            )
+        }
+    }
 
     private fun sendEvent(
         reactContext: ReactContext,

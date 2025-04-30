@@ -54,13 +54,13 @@ Follow [this guide](./IapExample/README.md) to get the example running.
 
 ### <p style="color: gold;">Gold Tier</p>
 
-|                                                                       [NAMI](https://namiml.com)                                                                       |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| <a href="https://namiml.com"><img src="https://github.com/hyochan/react-native-iap/assets/27461460/89d71f61-bb73-400a-83bd-fe0f96eb726e" width="450"/></a> |
+<a href="https://www.courier.com/?utm_source=react-native-iap&utm_campaign=osssponsors">
+    <img width="420" alt="courier_dot_com" src="https://github.com/user-attachments/assets/319d8966-6839-498d-8ead-ce8cc72c3bca" />
+</a>
 
 ## Past Sponsors
 
-<a href="https://www.revenuecat.com"><img src="https://github.com/hyochan/react-native-iap/assets/27461460/1e387a47-afe0-4b85-ad78-1064ca6623fa" width="200"/></a>
+<a href="https://namiml.com"><img src="https://github.com/hyochan/react-native-iap/assets/27461460/89d71f61-bb73-400a-83bd-fe0f96eb726e" width="280"/></a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://www.revenuecat.com"><img src="https://github.com/hyochan/react-native-iap/assets/27461460/1e387a47-afe0-4b85-ad78-1064ca6623fa" width="200"/></a>
 
 Support this project by becoming a sponsor. Your logo will show up here with
 a link to your website. [Buy me a coffee](https://www.buymeacoffee.com/hyochan) or
@@ -71,7 +71,7 @@ a link to your website. [Buy me a coffee](https://www.buymeacoffee.com/hyochan) 
 
 Please take a look at [iap.dev/consulting](https://iap.dev/consulting). At iap.dev, we offer IAP consulting services for all platforms. Please [Contact Us](https://console.iap.dev/contact-us).
 
-Note: This service is not affiliated with hyochan. It was created by [andresesfm](https://github.com/andresesfm) who has contributed and provided support for this project
+Note: This service is not affiliated with [hyochan](https://github.com/hyochan). It was created by [andresesfm](https://github.com/andresesfm) who has contributed and provided support for this project
 
 ### Backers
 
