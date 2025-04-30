@@ -14,7 +14,6 @@ import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.ConsumeResponseListener
 import com.android.billingclient.api.GetBillingConfigParams
-import com.android.billingclient.api.GetBillingConfigParams.Builder
 import com.android.billingclient.api.ProductDetails
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchaseHistoryRecord
@@ -46,10 +45,10 @@ import com.google.android.gms.common.GoogleApiAvailability
 @ReactModule(name = RNIapModule.TAG)
 class RNIapModule(
     private val reactContext: ReactApplicationContext,
+    private val builder: BillingClient.Builder = BillingClient.newBuilder(reactContext).enablePendingPurchases(),
     private val googleApiAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
 ) : ReactContextBaseJavaModule(reactContext),
-    PurchasesUpdatedListener,
-    UserChoiceBillingListener {
+    PurchasesUpdatedListener {
     private var billingClientCache: BillingClient? = null
     private val skus: MutableMap<String, ProductDetails> = mutableMapOf()
     private var isUserChoiceBillingEnabled = false
@@ -149,13 +148,14 @@ class RNIapModule(
         }
 
         if (billingClientCache?.isReady == true) {
-            billingClientCache?.endConnection()
+            promise.safeResolve(true)
+            return
         }
 
-        // BuildClient再生成
-        val newBuilder = BillingClient.newBuilder(reactContext)
-            .enablePendingPurchases()
-            .setListener(this)
+        billingClientCache?.endConnection()
+
+        // BuildClient再利用
+        val newBuilder = builder.setListener(this)
 
         newBuilder.build().also {
             billingClientCache = it
